@@ -155,7 +155,7 @@ void Display(int i, byte b, byte point){
 			Send(8, 0x01 | point);
 			return;
 		case 0xFE: // E
-			Send(8, 0x4F);
+			Send(8, 0x4F | point);
 			return;
 		case 0xFF: // clear place
 			Send(i, 0x00 | point);
@@ -279,6 +279,10 @@ void Show3(long reg, byte point, byte min){
 	byte f;
 	int i;
 	byte p, flag;
+	if(eFlag){
+		Display(8, 0xFE, memSet);
+		return;
+	}
 	f = 0xFF;
 	if(min) f = 0xFD;
 	Display(8, f, memSet);
@@ -299,13 +303,13 @@ void Show3(long reg, byte point, byte min){
 	}
 }
 
-void Delay500ms(void)	//@11.0592MHz
+void Delay250ms(void)	//@11.0592MHz
 {
 	unsigned char data i, j, k;
 
 	_nop_();
 	_nop_();
-	i = 22;
+	i = 11;
 	j = 3;
 	k = 227;
 	do
@@ -344,6 +348,10 @@ void Calc(){
 			x = x * y;
 			break;
 		case 0x14:
+			if(y == 0){
+				SetErr();
+				return;
+			}
 			x = x / y;
 			break;
 	}
@@ -460,7 +468,6 @@ void main()
 		Reset();
 	
 		UartSendStr("Run calculator\r\n");
-		UartPrintDbl(12.45);
 		
 	  while (1)
     {
@@ -476,8 +483,15 @@ void main()
 			}
 			P2 = 0xFF;
 			if(read != 0xFF){
-				if(readFlag && !eFlag){
+				if(readFlag){
 					key = Decode(read, row);
+					if(key == 0x19){ // C
+						Reset();
+						readFlag = 1;
+						point = 1;
+						inputX = 1;
+						cx = 0;
+					} else
 					if(key < 0x0A && pointSet < 7){
 						if(cx){ // begin input y
 							reg = 0;
@@ -518,19 +532,12 @@ void main()
 						mreg = 0;
 					} else if(key == 0x17 && memSet > 0){ // MR
 						GetReg(mreg);
-					} else if(key == 0x19){ // C
-						Reset();
-						readFlag = 1;
-						point = 1;
-						inputX = 1;
-						cx = 0;
-					}
-					
+					} 					
 					var =(double) reg / pow(10, pointSet);
 					Show3(reg, pointSet, minus);
 					read = 0xFF;
 					readFlag = 0;
-					Delay500ms();
+					Delay250ms();
 				}
 			}else{
 				readFlag = 1;
